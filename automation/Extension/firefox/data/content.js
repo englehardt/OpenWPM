@@ -364,7 +364,8 @@ function getPageScript() {
       return typeof property === 'object';
     }
 
-    function instrumentObject(object, objectName, logSettings={}) {
+    function instrumentObject(object, objectName,
+      logSettings={logCallStack: true}) {
       // Use for objects or object prototypes
       //
       // Parameters
@@ -459,7 +460,8 @@ function getPageScript() {
     }
 
     // Log properties of prototypes and objects
-    function instrumentObjectProperty(object, objectName, propertyName, logSettings={}) {
+    function instrumentObjectProperty(object, objectName, propertyName,
+      logSettings={logCallStack: true}) {
 
       // Store original descriptor in closure
       var propDesc = Object.getPropertyDescriptor(object, propertyName);
@@ -624,7 +626,10 @@ function getPageScript() {
     instrumentObject(
         window.CanvasRenderingContext2D.prototype,
         "CanvasRenderingContext2D",
-        {'excludedProperties': excludedProperties}
+        {
+          'excludedProperties': excludedProperties,
+          'logCallStack': true
+        }
     );
 
     // Access to webRTC
