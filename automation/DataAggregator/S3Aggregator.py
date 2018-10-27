@@ -19,7 +19,7 @@ from six.moves import queue
 from .BaseAggregator import RECORD_TYPE_CONTENT, BaseAggregator, BaseListener
 from .parquet_schema import PQ_SCHEMAS
 
-CACHE_SIZE = 500
+CACHE_SIZE = 10
 SITE_VISITS_INDEX = '_site_visits_index'
 CONTENT_DIRECTORY = 'content'
 
@@ -92,9 +92,13 @@ class S3Listener(BaseListener):
                     df, schema=PQ_SCHEMAS[table_name], preserve_index=False
                 )
                 self._batches[table_name].append(batch)
+                self.logger.debug(
+                    "Successfully created record batch for visit_id %d and "
+                    "table %s" % (visit_id, table_name)
+                )
             except pa.lib.ArrowInvalid as e:
                 self.logger.error(
-                    "Error while sending record:\n%s\n%s\n%s\n"
+                    "Error while creating record batch:\n%s\n%s\n%s\n"
                     % (table_name, type(e), e)
                 )
                 pass
@@ -153,6 +157,9 @@ class S3Listener(BaseListener):
         """Copy in-memory batches to s3"""
         for table_name, batches in self._batches.items():
             if not force and len(batches) <= CACHE_SIZE:
+                self.logger.info(
+                    "Skipping send since batch is only of length %d" % len(batches)
+                )
                 continue
             if table_name == SITE_VISITS_INDEX:
                 out_str = '\n'.join([json.dumps(x) for x in batches])
@@ -165,6 +172,9 @@ class S3Listener(BaseListener):
                 self._write_str_to_s3(out_str, fname)
             else:
                 try:
+                    self.logger.info(
+                        "Preparing to upload batch"
+                    )
                     table = pa.Table.from_batches(batches)
                     pq.write_to_dataset(
                         table, self._s3_bucket_uri % table_name,
@@ -172,6 +182,9 @@ class S3Listener(BaseListener):
                         preserve_index=False,
                         partition_cols=['instance_id'],
                         compression='snappy'
+                    )
+                    self.logger.info(
+                        "Successfully uploaded batch"
                     )
                 except pa.lib.ArrowInvalid as e:
                     self.logger.error(
