@@ -19,7 +19,8 @@ from six.moves import queue
 from .BaseAggregator import RECORD_TYPE_CONTENT, BaseAggregator, BaseListener
 from .parquet_schema import PQ_SCHEMAS
 
-CACHE_SIZE = 10
+CACHE_SIZE = 500
+RECORDS_BETWEEN_STATUS_UPDATE = 500  # Output queue size every N records
 SITE_VISITS_INDEX = '_site_visits_index'
 CONTENT_DIRECTORY = 'content'
 
@@ -62,6 +63,7 @@ class S3Listener(BaseListener):
         self._fs = s3fs.S3FileSystem()
         self._s3_bucket_uri = 's3://%s/%s/visits/%%s' % (
             self._bucket, self.dir)
+        self._record_counter = 0
         super(S3Listener, self).__init__(status_queue, manager_params)
 
     def _get_records(self, visit_id):
@@ -93,8 +95,8 @@ class S3Listener(BaseListener):
                 )
                 self._batches[table_name].append(batch)
                 self.logger.debug(
-                    "Successfully created record batch for visit_id %d and "
-                    "table %s" % (visit_id, table_name)
+                    "Successfully created batch for table %s and "
+                    "visit_id %s" % (table_name, visit_id)
                 )
             except pa.lib.ArrowInvalid as e:
                 self.logger.error(
@@ -157,9 +159,6 @@ class S3Listener(BaseListener):
         """Copy in-memory batches to s3"""
         for table_name, batches in self._batches.items():
             if not force and len(batches) <= CACHE_SIZE:
-                self.logger.info(
-                    "Skipping send since batch is only of length %d" % len(batches)
-                )
                 continue
             if table_name == SITE_VISITS_INDEX:
                 out_str = '\n'.join([json.dumps(x) for x in batches])
@@ -172,9 +171,6 @@ class S3Listener(BaseListener):
                 self._write_str_to_s3(out_str, fname)
             else:
                 try:
-                    self.logger.info(
-                        "Preparing to upload batch"
-                    )
                     table = pa.Table.from_batches(batches)
                     pq.write_to_dataset(
                         table, self._s3_bucket_uri % table_name,
@@ -182,9 +178,6 @@ class S3Listener(BaseListener):
                         preserve_index=False,
                         partition_cols=['instance_id'],
                         compression='snappy'
-                    )
-                    self.logger.info(
-                        "Successfully uploaded batch"
                     )
                 except pa.lib.ArrowInvalid as e:
                     self.logger.error(
@@ -196,6 +189,15 @@ class S3Listener(BaseListener):
 
     def process_record(self, record):
         """Add `record` to database"""
+        self._record_counter += 1
+        if self._record_counter % RECORDS_BETWEEN_STATUS_UPDATE == 0:
+            self.logger.debug(
+                "******* Aggregator Status Update *******"
+                "** Queue size: %d                     **"
+                "****************************************" % (
+                    self.record_queue.qsize())
+            )
+            self._record_counter = 0
         if len(record) != 2:
             self.logger.error("Query is not the correct length")
             return
