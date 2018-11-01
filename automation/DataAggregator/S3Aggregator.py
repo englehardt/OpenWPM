@@ -25,12 +25,15 @@ SITE_VISITS_INDEX = '_site_visits_index'
 CONTENT_DIRECTORY = 'content'
 
 
-def listener_process_runner(manager_params, status_queue, instance_id):
+def listener_process_runner(
+        manager_params, status_queue, shutdown_queue, instance_id):
     """S3Listener runner. Pass to new process"""
-    listener = S3Listener(status_queue, manager_params, instance_id)
+    listener = S3Listener(
+        status_queue, shutdown_queue, manager_params, instance_id)
     listener.startup()
 
     while True:
+        listener.update_status_queue()
         if listener.should_shutdown():
             break
         try:
@@ -51,7 +54,8 @@ class S3Listener(BaseListener):
     a parquet dataset. The schema for this dataset is given in
     ./parquet_schema.py
     """
-    def __init__(self, status_queue, manager_params, instance_id):
+    def __init__(
+            self, status_queue, shutdown_queue, manager_params, instance_id):
         self.dir = manager_params['s3_directory']
         self.browser_map = dict()  # maps crawl_id to visit_id
         self._records = dict()  # maps visit_id and table to records
@@ -64,7 +68,8 @@ class S3Listener(BaseListener):
         self._s3_bucket_uri = 's3://%s/%s/visits/%%s' % (
             self._bucket, self.dir)
         self._record_counter = 0
-        super(S3Listener, self).__init__(status_queue, manager_params)
+        super(S3Listener, self).__init__(
+            status_queue, shutdown_queue, manager_params)
 
     def _get_records(self, visit_id):
         """Get the RecordBatch corresponding to `visit_id`"""
