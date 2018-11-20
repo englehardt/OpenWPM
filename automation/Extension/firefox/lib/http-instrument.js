@@ -4,6 +4,7 @@ const events      = require("sdk/system/events");
 const data        = require("sdk/self").data;
 var loggingDB     = require("./loggingdb.js");
 var httpPostParser    = require("./http-post-parser.js");
+var disconnect    = require("./disconnect.js");
 
 var BinaryInputStream = CC('@mozilla.org/binaryinputstream;1',
     'nsIBinaryInputStream', 'setInputStream');
@@ -47,7 +48,8 @@ function get_stack_trace_str() {
   return stacktrace.join("\n");
 }
 
-var httpRequestHandler = function(reqEvent, crawlID) {
+var httpRequestHandler = function(reqEvent, crawlID,
+    blockCookieHeader, blockReferrerHeader, originReferrerHeader) {
   var httpChannel = reqEvent.subject.QueryInterface(Ci.nsIHttpChannel);
 
   // Save HTTP redirect events. Requires FF 49+
@@ -90,7 +92,6 @@ var httpRequestHandler = function(reqEvent, crawlID) {
       var isSTSUpgrade = !!(flags & Ci.nsIChannelEventSink.REDIRECT_STS_UPGRADE);
 
       newChannel.QueryInterface(Ci.nsIHttpChannel);
-
       loggingDB.saveRecord("http_redirects", {
         'crawl_id': crawlID,
         'old_channel_id': oldChannel.channelId,
@@ -137,6 +138,116 @@ var httpRequestHandler = function(reqEvent, crawlID) {
 
   var current_time = new Date();
   update["time_stamp"] = current_time.toISOString();
+
+  // Grab the triggering and loading Principals
+  var triggeringOrigin;
+  var loadingOrigin;
+  if (httpChannel.loadInfo.triggeringPrincipal)
+    triggeringOrigin = httpChannel.loadInfo.triggeringPrincipal.origin
+  if (httpChannel.loadInfo.loadingPrincipal)
+    loadingOrigin = httpChannel.loadInfo.loadingPrincipal.origin
+  update["triggering_origin"] = loggingDB.escapeString(triggeringOrigin);
+  update["loading_origin"] = loggingDB.escapeString(loadingOrigin);
+
+  // loadingDocument's href
+  // The loadingDocument is the document the element resides, regardless of
+  // how the load was triggered.
+  var loadingHref;
+  if (httpChannel.loadInfo.loadingDocument && httpChannel.loadInfo.loadingDocument.location)
+    loadingHref = httpChannel.loadInfo.loadingDocument.location.href;
+  update["loading_href"] = loggingDB.escapeString(loadingHref);
+
+  var isThirdPartyChannel;
+  try {
+    var isThirdPartyChannel = ThirdPartyUtil.isThirdPartyChannel(httpChannel);
+  } catch (e) {
+  }
+
+  var topWindow;
+  var topURI;
+  try {
+    var topWindow = ThirdPartyUtil.getTopWindowForChannel(httpChannel);
+    var topURI = ThirdPartyUtil.getURIFromWindow(topWindow);
+    if (topURI) {
+      var topUrl = topURI.spec;
+      var channelURI = httpChannel.URI;
+      var isThirdPartyWindow = ThirdPartyUtil.isThirdPartyURI(channelURI, topURI);
+      update["is_third_party_window"] = isThirdPartyWindow;
+      update["is_third_party_channel"] = isThirdPartyChannel;
+      update["top_level_url"] = loggingDB.escapeString(topUrl);
+    }
+  } catch (anError) {
+    // Exceptions expected for channels triggered or loading in a
+    // NullPrincipal or SystemPrincipal. They are also expected for favicon
+    // loads, which we attempt to filter. Depending on the naming, some favicons
+    // may continue to lead to error logs.
+    if (update["triggering_origin"] != '[System Principal]' &&
+        update["triggering_origin"] != undefined &&
+        update["loading_origin"] != '[System Principal]' &&
+        update["loading_origin"] != undefined &&
+        !update['url'].endsWith('ico')) {
+
+      loggingDB.logError(
+          'Error while retrieving additional channel information for URL: ' +
+          '\n' + update['url'] +
+          '\n Error text:' + JSON.stringify(anError)
+      );
+    }
+  }
+
+  // Classify resource
+  var isTracker = disconnect.isTracker(httpChannel.URI, topURI);
+
+  // Block cookie headers from trackers
+  if (isThirdPartyChannel && isTracker && blockCookieHeader) {
+    try {
+      cookie = httpChannel.getRequestHeader('Cookie');
+      httpChannel.setRequestHeader('Cookie', '', false);
+      console.log(
+        "\n***********************************************\n",
+        "*****Stripping Cookie header:", cookie,
+        " \nXXXXXXXfrom:", httpChannel.URI.spec
+      );
+      update['original_cookie'] = loggingDB.escapeString(cookie);
+    } catch(err){
+    }
+  }
+
+  // Block or downgrade referrer headers for trackers
+  if (isThirdPartyChannel && isTracker && (blockReferrerHeader || originReferrerHeader)) {
+    // Remove any current cookie headers
+    var referrer = null;
+    try {
+      referrer = httpChannel.getRequestHeader('Referer');
+    } catch(err){
+    }
+
+    // strip referrer
+    if (blockReferrerHeader && referrer) {
+      httpChannel.setRequestHeader('Referer', '', false);
+      console.log(
+        "\n***********************************************\n",
+        "*****Stripping Referrer header:\n", referrer,
+        " \nXXXXXXXon:", httpChannel.URI.spec
+      );
+      update['original_referrer'] = loggingDB.escapeString(referrer);
+    }
+
+    // replace referrer
+    if (originReferrerHeader && referrer) {
+      //TODO: make URI from referrer and strip to origin
+      var newReferrer;
+      httpChannel.setRequestHeader('Referer', newReferrer, false);
+      console.log(
+        "\n***********************************************\n",
+        "*****Replacing Referrer header:\n", referrer,
+        "with:\n", newReferrer,
+        " \nXXXXXXXon:", httpChannel.URI.spec
+      );
+      update['original_referrer'] = loggingDB.escapeString(referrer);
+      update['new_referrer'] = loggingDB.escapeString(newReferrer);
+    }
+  }
 
   var encodingType = "";
   var headers = [];
@@ -206,64 +317,12 @@ var httpRequestHandler = function(reqEvent, crawlID) {
   update["is_full_page"] = isFullPageLoad;
   update["is_frame_load"] = isFrameLoad;
 
-  // Grab the triggering and loading Principals
-  var triggeringOrigin;
-  var loadingOrigin;
-  if (httpChannel.loadInfo.triggeringPrincipal)
-    triggeringOrigin = httpChannel.loadInfo.triggeringPrincipal.origin
-  if (httpChannel.loadInfo.loadingPrincipal)
-    loadingOrigin = httpChannel.loadInfo.loadingPrincipal.origin
-  update["triggering_origin"] = loggingDB.escapeString(triggeringOrigin);
-  update["loading_origin"] = loggingDB.escapeString(loadingOrigin);
-
-  // loadingDocument's href
-  // The loadingDocument is the document the element resides, regardless of
-  // how the load was triggered.
-  var loadingHref;
-  if (httpChannel.loadInfo.loadingDocument && httpChannel.loadInfo.loadingDocument.location)
-    loadingHref = httpChannel.loadInfo.loadingDocument.location.href;
-  update["loading_href"] = loggingDB.escapeString(loadingHref);
-
   // contentPolicyType of the requesting node. This is set by the type of
   // node making the request (i.e. an <img src=...> node will set to type 3).
   // For a mapping of integers to types see:
   // TODO: include the mapping directly
   // http://searchfox.org/mozilla-central/source/dom/base/nsIContentPolicyBase.idl)
   update["content_policy_type"] = httpChannel.loadInfo.externalContentPolicyType;
-
-  // Do third-party checks
-  // These specific checks are done because it's what's used in Tracking Protection
-  // See: http://searchfox.org/mozilla-central/source/netwerk/base/nsChannelClassifier.cpp#107
-  try {
-    var isThirdPartyChannel = ThirdPartyUtil.isThirdPartyChannel(httpChannel);
-    var topWindow = ThirdPartyUtil.getTopWindowForChannel(httpChannel);
-    var topURI = ThirdPartyUtil.getURIFromWindow(topWindow);
-    if (topURI) {
-      var topUrl = topURI.spec;
-      var channelURI = httpChannel.URI;
-      var isThirdPartyToTopWindow = ThirdPartyUtil.isThirdPartyURI(channelURI, topURI);
-      update["is_third_party_to_top_window"] = isThirdPartyToTopWindow;
-      update["is_third_party_channel"] = isThirdPartyChannel;
-      update["top_level_url"] = loggingDB.escapeString(topUrl);
-    }
-  } catch (anError) {
-    // Exceptions expected for channels triggered or loading in a
-    // NullPrincipal or SystemPrincipal. They are also expected for favicon
-    // loads, which we attempt to filter. Depending on the naming, some favicons
-    // may continue to lead to error logs.
-    if (update["triggering_origin"] != '[System Principal]' &&
-        update["triggering_origin"] != undefined &&
-        update["loading_origin"] != '[System Principal]' &&
-        update["loading_origin"] != undefined &&
-        !update['url'].endsWith('ico')) {
-
-      loggingDB.logError(
-          'Error while retrieving additional channel information for URL: ' +
-          '\n' + update['url'] +
-          '\n Error text:' + JSON.stringify(anError)
-      );
-    }
-  }
 
   loggingDB.saveRecord("http_requests", update);
 };
@@ -394,7 +453,8 @@ function isJS(httpChannel) {
 
 // Instrument HTTP responses
 var httpResponseHandler = function(respEvent, isCached, crawlID,
-                                   saveJavascript, saveAllContent) {
+                                   saveJavascript, saveAllContent,
+                                   blockCookieHeader) {
   var httpChannel = respEvent.subject.QueryInterface(Ci.nsIHttpChannel);
 
   // http_responses table schema:
@@ -440,6 +500,63 @@ var httpResponseHandler = function(respEvent, isCached, crawlID,
   }
   update["location"] = loggingDB.escapeString(location);
 
+  var isThirdPartyChannel;
+  try {
+    var isThirdPartyChannel = ThirdPartyUtil.isThirdPartyChannel(httpChannel);
+  } catch (e) {
+  }
+
+  var topWindow;
+  var topURI;
+  try {
+    var topWindow = ThirdPartyUtil.getTopWindowForChannel(httpChannel);
+    var topURI = ThirdPartyUtil.getURIFromWindow(topWindow);
+    if (topURI) {
+      var topUrl = topURI.spec;
+      var channelURI = httpChannel.URI;
+      var isThirdPartyWindow = ThirdPartyUtil.isThirdPartyURI(channelURI, topURI);
+      update["is_third_party_window"] = isThirdPartyWindow;
+      update["is_third_party_channel"] = isThirdPartyChannel;
+      update["top_level_url"] = loggingDB.escapeString(topUrl);
+    }
+  } catch (anError) {
+    // Exceptions expected for channels triggered or loading in a
+    // NullPrincipal or SystemPrincipal. They are also expected for favicon
+    // loads, which we attempt to filter. Depending on the naming, some favicons
+    // may continue to lead to error logs.
+    if (update["triggering_origin"] != '[System Principal]' &&
+        update["triggering_origin"] != undefined &&
+        update["loading_origin"] != '[System Principal]' &&
+        update["loading_origin"] != undefined &&
+        !update['url'].endsWith('ico')) {
+
+      loggingDB.logError(
+          'Error while retrieving additional channel information for URL: ' +
+          '\n' + update['url'] +
+          '\n Error text:' + JSON.stringify(anError)
+      );
+    }
+  }
+
+  // Classify resource
+  var isTracker = disconnect.isTracker(httpChannel.URI, topURI);
+
+  // Strip Set-Cookie headers from trackers
+  if (isThirdPartyChannel && isTracker && blockCookieHeader) {
+    try {
+      var cookies = httpChannel.getResponseHeader('Set-Cookie');
+      httpChannel.setResponseHeader('Set-Cookie', '', false);
+      console.log(
+        "\n***********************************************\n",
+        "*****Stripping Set-Cookie header:\n", cookies,
+        " \nXXXXXXXfrom:", httpChannel.URI.spec
+      );
+      update['original_cookies'] = cookies;
+    } catch(err){
+      //console.log("response has no cookie header!");
+    }
+  }
+
   var headers = [];
   httpChannel.visitResponseHeaders({visitHeader: function(name, value) {
     var header_pair = [];
@@ -462,21 +579,23 @@ var httpResponseHandler = function(respEvent, isCached, crawlID,
  * Attach handlers to event monitor
  */
 
-exports.run = function(crawlID, saveJavascript, saveAllContent) {
+exports.run = function(crawlID, saveJavascript, saveAllContent,
+    blockReferrerHeader, blockCookieHeader, originReferrerHeader) {
+
   // Monitor http events
   events.on("http-on-modify-request", function(event) {
-    httpRequestHandler(event, crawlID);
+    httpRequestHandler(event, crawlID, blockCookieHeader, blockReferrerHeader, originReferrerHeader);
   }, true);
 
   events.on("http-on-examine-response", function(event) {
-    httpResponseHandler(event, false, crawlID, saveJavascript, saveAllContent);
+    httpResponseHandler(event, false, crawlID, saveJavascript, saveAllContent, blockCookieHeader);
   }, true);
 
   events.on("http-on-examine-cached-response", function(event) {
-    httpResponseHandler(event, true, crawlID, saveJavascript, saveAllContent);
+    httpResponseHandler(event, true, crawlID, saveJavascript, saveAllContent, blockCookieHeader);
   }, true);
 
   events.on("http-on-examine-merged-response", function(event) {
-    httpResponseHandler(event, true, crawlID, saveJavascript, saveAllContent);
+    httpResponseHandler(event, true, crawlID, saveJavascript, saveAllContent, blockCookieHeader);
   }, true);
 };

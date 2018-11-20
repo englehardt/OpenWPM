@@ -6,7 +6,7 @@ var loggingDB           = require("./lib/loggingdb.js");
 var cookieInstrument    = require("./lib/cookie-instrument.js");
 var jsInstrument        = require("./lib/javascript-instrument.js");
 var httpInstrument      = require("./lib/http-instrument.js");
-
+var disconnect          = require("./lib/disconnect.js");
 
 exports.main = function(options, callbacks) {
 
@@ -27,6 +27,10 @@ exports.main = function(options, callbacks) {
       http_instrument:true,
       save_javascript:true,
       save_all_content:true,
+      block_cookie_header:true,
+      block_referrer_header:true,
+      origin_referrer_header:true,
+      use_content_category:true,
       testing:true,
       crawl_id:''
     };
@@ -36,6 +40,8 @@ exports.main = function(options, callbacks) {
                  config['leveldb_address'],
                  config['logger_address'],
                  config['crawl_id']);
+
+  disconnect.loadLists(config['use_content_category']);
 
   if (config['cookie_instrument']) {
     loggingDB.logDebug("Cookie instrumentation enabled");
@@ -47,7 +53,10 @@ exports.main = function(options, callbacks) {
   }
   if (config['http_instrument']) {
     loggingDB.logDebug("HTTP Instrumentation enabled");
-    httpInstrument.run(config['crawl_id'], config['save_javascript'],
-                       config['save_all_content']);
+    httpInstrument.run(
+      config['crawl_id'], config['save_javascript'], config['save_all_content'],
+      config['block_cookie_header'], config['block_referrer_header'],
+      config['origin_referrer_header']
+    );
   }
 };

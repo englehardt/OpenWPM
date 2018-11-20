@@ -6,6 +6,11 @@
     "save_javascript": false,
     "save_all_content": false,
 
+    "block_cookie_header": false,
+    "block_referrer_header": false,
+    "origin_referrer_header": false,
+    "use_content_category": false,
+
     "random_attributes": false,
     "bot_mitigation": false,
     "disable_flash": true,
