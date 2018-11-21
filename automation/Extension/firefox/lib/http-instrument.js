@@ -203,7 +203,7 @@ var httpRequestHandler = function(reqEvent, crawlID,
     try {
       cookie = httpChannel.getRequestHeader('Cookie');
       httpChannel.setRequestHeader('Cookie', '', false);
-      console.log(
+      loggingDB.logDebug(
         "\n***********************************************\n",
         "*****Stripping Cookie header:", cookie,
         " \nXXXXXXXfrom:", httpChannel.URI.spec
@@ -225,7 +225,7 @@ var httpRequestHandler = function(reqEvent, crawlID,
     // strip referrer
     if (blockReferrerHeader && referrer) {
       httpChannel.setRequestHeader('Referer', '', false);
-      console.log(
+      loggingDB.logDebug(
         "\n***********************************************\n",
         "*****Stripping Referrer header:\n", referrer,
         " \nXXXXXXXon:", httpChannel.URI.spec
@@ -238,7 +238,7 @@ var httpRequestHandler = function(reqEvent, crawlID,
       //TODO: make URI from referrer and strip to origin
       var newReferrer;
       httpChannel.setRequestHeader('Referer', newReferrer, false);
-      console.log(
+      loggingDB.logDebug(
         "\n***********************************************\n",
         "*****Replacing Referrer header:\n", referrer,
         "with:\n", newReferrer,
@@ -546,7 +546,7 @@ var httpResponseHandler = function(respEvent, isCached, crawlID,
     try {
       var cookies = httpChannel.getResponseHeader('Set-Cookie');
       httpChannel.setResponseHeader('Set-Cookie', '', false);
-      console.log(
+      loggingDB.logDebug(
         "\n***********************************************\n",
         "*****Stripping Set-Cookie header:\n", cookies,
         " \nXXXXXXXfrom:", httpChannel.URI.spec
