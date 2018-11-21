@@ -576,7 +576,7 @@ var httpResponseHandler = function(respEvent, isCached, crawlID,
  */
 
 exports.run = function(crawlID, saveJavascript, saveAllContent,
-    blockReferrerHeader, blockCookieHeader, originReferrerHeader) {
+  blockCookieHeader, blockReferrerHeader, originReferrerHeader) {
 
   // Monitor http events
   events.on("http-on-modify-request", function(event) {
