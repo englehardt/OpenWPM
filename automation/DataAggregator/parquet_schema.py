@@ -96,7 +96,10 @@ fields = [
     pa.field('location', pa.string(), nullable=False),
     pa.field('original_cookies', pa.string()),
     pa.field('time_stamp', pa.string(), nullable=False),
-    pa.field('content_hash', pa.string())
+    pa.field('content_hash', pa.string()),
+    pa.field('top_level_url', pa.string()),
+    pa.field('is_third_party_channel', pa.bool_()),
+    pa.field('is_third_party_to_top_window', pa.bool_()),
 ]
 PQ_SCHEMAS['http_responses'] = pa.schema(fields)
 

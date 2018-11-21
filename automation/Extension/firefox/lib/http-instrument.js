@@ -172,7 +172,7 @@ var httpRequestHandler = function(reqEvent, crawlID,
       var topUrl = topURI.spec;
       var channelURI = httpChannel.URI;
       var isThirdPartyWindow = ThirdPartyUtil.isThirdPartyURI(channelURI, topURI);
-      update["is_third_party_window"] = isThirdPartyWindow;
+      update["is_third_party_to_top_window"] = isThirdPartyWindow;
       update["is_third_party_channel"] = isThirdPartyChannel;
       update["top_level_url"] = loggingDB.escapeString(topUrl);
     }
@@ -512,27 +512,16 @@ var httpResponseHandler = function(respEvent, isCached, crawlID,
       var topUrl = topURI.spec;
       var channelURI = httpChannel.URI;
       var isThirdPartyWindow = ThirdPartyUtil.isThirdPartyURI(channelURI, topURI);
-      update["is_third_party_window"] = isThirdPartyWindow;
+      update["is_third_party_to_top_window"] = isThirdPartyWindow;
       update["is_third_party_channel"] = isThirdPartyChannel;
       update["top_level_url"] = loggingDB.escapeString(topUrl);
     }
   } catch (anError) {
-    // Exceptions expected for channels triggered or loading in a
-    // NullPrincipal or SystemPrincipal. They are also expected for favicon
-    // loads, which we attempt to filter. Depending on the naming, some favicons
-    // may continue to lead to error logs.
-    if (update["triggering_origin"] != '[System Principal]' &&
-        update["triggering_origin"] != undefined &&
-        update["loading_origin"] != '[System Principal]' &&
-        update["loading_origin"] != undefined &&
-        !update['url'].endsWith('ico')) {
-
-      loggingDB.logError(
-          'Error while retrieving additional channel information for URL: ' +
-          '\n' + update['url'] +
-          '\n Error text:' + JSON.stringify(anError)
-      );
-    }
+    loggingDB.logError(
+        'Error while retrieving additional channel information for URL: ' +
+        '\n' + update['url'] +
+        '\n Error text:' + JSON.stringify(anError)
+    );
   }
 
   // Classify resource
