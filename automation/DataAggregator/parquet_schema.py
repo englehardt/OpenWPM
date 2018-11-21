@@ -75,6 +75,7 @@ fields = [
     pa.field('req_call_stack', pa.string()),
     pa.field('content_policy_type', pa.int16(), nullable=False),
     pa.field('post_body', pa.string()),
+    pa.field('original_cookies', pa.string()),
     pa.field('time_stamp', pa.string(), nullable=False),
 ]
 PQ_SCHEMAS['http_requests'] = pa.schema(fields)
@@ -93,6 +94,7 @@ fields = [
     pa.field('headers', pa.string(), nullable=False),
     pa.field('channel_id', pa.string(), nullable=False),
     pa.field('location', pa.string(), nullable=False),
+    pa.field('original_cookies', pa.string()),
     pa.field('time_stamp', pa.string(), nullable=False),
     pa.field('content_hash', pa.string())
 ]

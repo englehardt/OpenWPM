@@ -207,7 +207,7 @@ var httpRequestHandler = function(reqEvent, crawlID,
         "Stripping Cookie header:" + cookie +
         " \nfrom: " + httpChannel.URI.spec
       );
-      update['original_cookie'] = loggingDB.escapeString(cookie);
+      update['original_cookies'] = loggingDB.escapeString(cookie);
     } catch(err){
     }
   }
@@ -547,7 +547,7 @@ var httpResponseHandler = function(respEvent, isCached, crawlID,
         "Stripping Set-Cookie header:\n" + cookies +
         " \nfrom: " + httpChannel.URI.spec
       );
-      update['original_cookies'] = cookies;
+      update['original_cookies'] = loggingDB.escapeString(cookies);
     } catch(err){
       //console.log("response has no cookie header!");
     }
