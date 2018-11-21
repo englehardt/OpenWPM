@@ -556,48 +556,7 @@ function getPageScript() {
     /*
      * Start Instrumentation
      */
-    // TODO: user should be able to choose what to instrument
 
-    // Access to navigator properties
-    var navigatorProperties = [ "appCodeName", "appName", "appVersion",
-                                "buildID", "cookieEnabled", "doNotTrack",
-                                "geolocation", "language", "languages",
-                                "onLine", "oscpu", "platform", "product",
-                                "productSub", "userAgent", "vendorSub",
-                                "vendor" ];
-    navigatorProperties.forEach(function(property) {
-      instrumentObjectProperty(window.navigator, "window.navigator", property);
-    });
-
-    // Access to screen properties
-    //instrumentObject(window.screen, "window.screen");
-    // TODO: why do we instrument only two screen properties
-    var screenProperties =  [ "pixelDepth", "colorDepth" ];
-    screenProperties.forEach(function(property) {
-      instrumentObjectProperty(window.screen, "window.screen", property);
-    });
-
-    // Access to plugins
-    var pluginProperties = [ "name", "filename", "description", "version", "length"];
-      for (var i = 0; i < window.navigator.plugins.length; i++) {
-      let pluginName = window.navigator.plugins[i].name;
-      pluginProperties.forEach(function(property) {
-        instrumentObjectProperty(
-            window.navigator.plugins[pluginName],
-            "window.navigator.plugins[" + pluginName + "]", property);
-      });
-    }
-
-    // Access to MIMETypes
-    var mimeTypeProperties = [ "description", "suffixes", "type"];
-    for (var i = 0; i < window.navigator.mimeTypes.length; i++) {
-      let mimeTypeName = window.navigator.mimeTypes[i].type;
-      mimeTypeProperties.forEach(function(property) {
-        instrumentObjectProperty(
-            window.navigator.mimeTypes[mimeTypeName],
-            "window.navigator.mimeTypes[" + mimeTypeName + "]", property);
-      });
-    }
     // Name, localStorage, and sessionsStorage logging
     // Instrumenting window.localStorage directly doesn't seem to work, so the Storage
     // prototype must be instrumented instead. Unfortunately this fails to differentiate
@@ -613,30 +572,6 @@ function getPageScript() {
     instrumentObjectProperty(window.document, "window.document", "cookie", {
       logCallStack: true
     });
-
-    // Access to canvas
-    instrumentObject(window.HTMLCanvasElement.prototype,"HTMLCanvasElement");
-
-    var excludedProperties = [ "quadraticCurveTo", "lineTo", "transform",
-                               "globalAlpha", "moveTo", "drawImage",
-                               "setTransform", "clearRect", "closePath",
-                               "beginPath", "canvas", "translate" ];
-    instrumentObject(
-        window.CanvasRenderingContext2D.prototype,
-        "CanvasRenderingContext2D",
-        {'excludedProperties': excludedProperties}
-    );
-
-    // Access to webRTC
-    instrumentObject(window.RTCPeerConnection.prototype,"RTCPeerConnection");
-
-    // Access to Audio API
-    instrumentObject(window.AudioContext.prototype, "AudioContext");
-    instrumentObject(window.OfflineAudioContext.prototype, "OfflineAudioContext");
-    instrumentObject(window.OscillatorNode.prototype, "OscillatorNode");
-    instrumentObject(window.AnalyserNode.prototype, "AnalyserNode");
-    instrumentObject(window.GainNode.prototype, "GainNode");
-    instrumentObject(window.ScriptProcessorNode.prototype, "ScriptProcessorNode");
 
     console.log("Successfully started all instrumentation.");
 
