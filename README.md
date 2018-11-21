@@ -137,13 +137,13 @@ available [below](#output-format).
         * The page source is saved in the following nested json structure:
         ```
         {
-            'document_url': "http://example.com",
+            'doc_url': "http://example.com",
             'source': "<html> ... </html>",
             'iframes': {
-                'frame_1': {'document_url': ...,
+                'frame_1': {'doc_url': ...,
                             'source': ...,
                             'iframes: { ... }},
-                'frame_2': {'document_url': ...,
+                'frame_2': {'doc_url': ...,
                             'source': ...,
                             'iframes: { ... }},
                 'frame_3': { ... }
@@ -203,6 +203,11 @@ following configuration parameters in `manager_params`:
 In order to save to S3 you must have valid access credentials stored in
 `~/.aws`. We do not currently allow you to specify an alternate storage
 location.
+
+**NOTE:** The schemas should be kept in sync with the exception of
+output-specific columns (e.g., `instance_id` in the S3 output). You can compare
+the two schemas by running
+`diff -y automation/schema.sql automation/DataAggregator/parquet_schema.py`.
 
 Browser and Platform Configuration
 ----------------------------------
