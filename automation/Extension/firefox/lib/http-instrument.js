@@ -204,9 +204,8 @@ var httpRequestHandler = function(reqEvent, crawlID,
       cookie = httpChannel.getRequestHeader('Cookie');
       httpChannel.setRequestHeader('Cookie', '', false);
       loggingDB.logDebug(
-        "\n***********************************************\n",
-        "*****Stripping Cookie header:", cookie,
-        " \nXXXXXXXfrom:", httpChannel.URI.spec
+        "Stripping Cookie header:" + cookie +
+        " \nfrom: " + httpChannel.URI.spec
       );
       update['original_cookie'] = loggingDB.escapeString(cookie);
     } catch(err){
@@ -226,9 +225,8 @@ var httpRequestHandler = function(reqEvent, crawlID,
     if (blockReferrerHeader && referrer) {
       httpChannel.setRequestHeader('Referer', '', false);
       loggingDB.logDebug(
-        "\n***********************************************\n",
-        "*****Stripping Referrer header:\n", referrer,
-        " \nXXXXXXXon:", httpChannel.URI.spec
+        "Stripping Referrer header:\n" + referrer +
+        " \non: " + httpChannel.URI.spec
       );
       update['original_referrer'] = loggingDB.escapeString(referrer);
     }
@@ -239,10 +237,9 @@ var httpRequestHandler = function(reqEvent, crawlID,
       var newReferrer;
       httpChannel.setRequestHeader('Referer', newReferrer, false);
       loggingDB.logDebug(
-        "\n***********************************************\n",
-        "*****Replacing Referrer header:\n", referrer,
-        "with:\n", newReferrer,
-        " \nXXXXXXXon:", httpChannel.URI.spec
+        "Replacing Referrer header:\n" + referrer +
+        "with:\n" + newReferrer +
+        " \non: " + httpChannel.URI.spec
       );
       update['original_referrer'] = loggingDB.escapeString(referrer);
       update['new_referrer'] = loggingDB.escapeString(newReferrer);
@@ -547,9 +544,8 @@ var httpResponseHandler = function(respEvent, isCached, crawlID,
       var cookies = httpChannel.getResponseHeader('Set-Cookie');
       httpChannel.setResponseHeader('Set-Cookie', '', false);
       loggingDB.logDebug(
-        "\n***********************************************\n",
-        "*****Stripping Set-Cookie header:\n", cookies,
-        " \nXXXXXXXfrom:", httpChannel.URI.spec
+        "Stripping Set-Cookie header:\n" + cookies +
+        " \nfrom: " + httpChannel.URI.spec
       );
       update['original_cookies'] = cookies;
     } catch(err){

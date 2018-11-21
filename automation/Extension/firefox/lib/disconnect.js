@@ -11,15 +11,15 @@ var dcList;
 // Load the disconnect list
 exports.loadLists = function(useContentCategory) {
   // Entity List
-  var dcEntity = JSON.parse(data.load("disconnect_entity.json"));
+  dcEntity = JSON.parse(data.load("disconnect_entity.json"));
 
   // Block List
   if (useContentCategory) {
-    var dcList = JSON.parse(data.load("disconnect_domains_content.json"));
+    dcList = JSON.parse(data.load("disconnect_domains_content.json"));
     // Add in `google.com` since they set a tracking cookie `NID`
     // dcList.push('google.com');
   } else {
-    var dcList = JSON.parse(data.load("disconnect_domains.json"));
+    dcList = JSON.parse(data.load("disconnect_domains.json"));
   }
 };
 
@@ -34,7 +34,18 @@ exports.isTracker = function(URI, topURI) {
    * `www.` subdomain. Nearly all entity top-levels are PS+1s.
    */
   if (topURI != null) {
-    var topBaseDomain = ThirdPartyUtil.getBaseDomain(topURI);
+    if (topURI.spec == 'about:blank') {
+      return false;
+    }
+    try {
+      var topBaseDomain = ThirdPartyUtil.getBaseDomain(topURI);
+    } catch (anError) {
+      console.error(
+        "error base domain for", topURI.spec,
+        "during request to", URI.spec
+      );
+      return false;
+    }
     if (
       ((topURI.host in dcEntity) &&
       (dcEntity[topURI.host].includes(URI.host) || dcEntity[topURI.host].includes(baseDomain))) ||
@@ -45,8 +56,8 @@ exports.isTracker = function(URI, topURI) {
   }
 
   /*
-   * Check the blacklist
-   * https://developers.google.com/safe-browsing/v4/urls-hashing#suffixprefix-expressions
+   * This isn't exactly what's implemented in Firefox, but only differs when
+   * the URI has more than 5 subdomains, which should be exceedingly rare.
    */
   var host = URI.host;
   for (var i=0; i<5; i++) {
