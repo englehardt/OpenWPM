@@ -19,8 +19,7 @@ from six.moves import queue
 from .BaseAggregator import RECORD_TYPE_CONTENT, BaseAggregator, BaseListener
 from .parquet_schema import PQ_SCHEMAS
 
-CACHE_SIZE = 50
-#CACHE_SIZE = 500
+CACHE_SIZE = 500
 SITE_VISITS_INDEX = '_site_visits_index'
 CONTENT_DIRECTORY = 'content'
 
