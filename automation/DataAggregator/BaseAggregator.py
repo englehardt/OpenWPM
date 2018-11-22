@@ -8,7 +8,7 @@ from ..MPLogger import loggingclient
 from ..SocketInterface import serversocket
 
 RECORD_TYPE_CONTENT = 'page_content'
-STATUS_TIMEOUT = 120  # seconds
+STATUS_TIMEOUT = 800  # seconds
 SHUTDOWN_SIGNAL = 'SHUTDOWN'
 
 STATUS_UPDATE_INTERVAL = 5  # seconds
