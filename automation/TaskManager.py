@@ -322,7 +322,7 @@ class TaskManager:
         # Block if the aggregator queue is too large
         agg_queue_size = self.data_aggregator.get_most_recent_status()
         if agg_queue_size >= AGGREGATOR_QUEUE_LIMIT:
-            while agg_queue_size >= AGGREGATOR_QUEUE_LIMIT:
+            while agg_queue_size >= (AGGREGATOR_QUEUE_LIMIT / 10):
                 self.logger.info(
                     "Blocking command submission until the DataAggregator "
                     "is below the max queue size of %d. Current queue "

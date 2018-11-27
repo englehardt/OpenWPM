@@ -1,5 +1,6 @@
 from __future__ import absolute_import, print_function
 
+import gc
 import gzip
 import hashlib
 import json
@@ -19,7 +20,7 @@ from six.moves import queue
 from .BaseAggregator import RECORD_TYPE_CONTENT, BaseAggregator, BaseListener
 from .parquet_schema import PQ_SCHEMAS
 
-CACHE_SIZE = 500
+CACHE_SIZE = 400
 SITE_VISITS_INDEX = '_site_visits_index'
 CONTENT_DIRECTORY = 'content'
 
@@ -190,6 +191,7 @@ class S3Listener(BaseListener):
                     )
                     pass
             self._batches[table_name] = list()
+        gc.collect()
 
     def process_record(self, record):
         """Add `record` to database"""
