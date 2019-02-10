@@ -574,7 +574,9 @@ function getPageScript() {
                                 "productSub", "userAgent", "vendorSub",
                                 "vendor" ];
     navigatorProperties.forEach(function(property) {
-      instrumentObjectProperty(window.navigator, "window.navigator", property);
+      instrumentObjectProperty(window.navigator, "window.navigator", property, {
+        logCallStack: true
+      });
     });
 
     // Access to screen properties
@@ -582,7 +584,9 @@ function getPageScript() {
     // TODO: why do we instrument only two screen properties
     var screenProperties =  [ "pixelDepth", "colorDepth" ];
     screenProperties.forEach(function(property) {
-      instrumentObjectProperty(window.screen, "window.screen", property);
+      instrumentObjectProperty(window.screen, "window.screen", property, {
+        logCallStack: true
+      });
     });
 
     // Access to plugins
@@ -592,7 +596,9 @@ function getPageScript() {
       pluginProperties.forEach(function(property) {
         instrumentObjectProperty(
             window.navigator.plugins[pluginName],
-            "window.navigator.plugins[" + pluginName + "]", property);
+            "window.navigator.plugins[" + pluginName + "]", property,
+            {logCallStack: true}
+        );
       });
     }
 
@@ -603,7 +609,9 @@ function getPageScript() {
       mimeTypeProperties.forEach(function(property) {
         instrumentObjectProperty(
             window.navigator.mimeTypes[mimeTypeName],
-            "window.navigator.mimeTypes[" + mimeTypeName + "]", property);
+            "window.navigator.mimeTypes[" + mimeTypeName + "]", property,
+            {logCallStack: true}
+        );
       });
     }
     // Name, localStorage, and sessionsStorage logging
@@ -613,9 +621,13 @@ function getPageScript() {
     // of a get for the localStorage object followed by a getItem/setItem for the Storage object.
     var windowProperties = [ "name", "localStorage", "sessionStorage" ];
     windowProperties.forEach(function(property) {
-      instrumentObjectProperty(window, "window", property);
+      instrumentObjectProperty(window, "window", property, {
+        logCallStack: true
+      });
     });
-    instrumentObject(window.Storage.prototype, "window.Storage");
+    instrumentObject(window.Storage.prototype, "window.Storage", {
+      logCallStack: true
+    });
 
     // Access to document.cookie
     instrumentObjectProperty(window.document, "window.document", "cookie", {
@@ -623,7 +635,9 @@ function getPageScript() {
     });
 
     // Access to canvas
-    instrumentObject(window.HTMLCanvasElement.prototype,"HTMLCanvasElement");
+    instrumentObject(window.HTMLCanvasElement.prototype,"HTMLCanvasElement", {
+      logCallStack: true
+    });
 
     var excludedProperties = [ "quadraticCurveTo", "lineTo", "transform",
                                "globalAlpha", "moveTo", "drawImage",
@@ -632,19 +646,36 @@ function getPageScript() {
     instrumentObject(
         window.CanvasRenderingContext2D.prototype,
         "CanvasRenderingContext2D",
-        {'excludedProperties': excludedProperties}
+        {
+          'excludedProperties': excludedProperties,
+          'logCallStack': true
+        }
     );
 
     // Access to webRTC
-    instrumentObject(window.RTCPeerConnection.prototype,"RTCPeerConnection");
+    instrumentObject(window.RTCPeerConnection.prototype,"RTCPeerConnection", {
+      logCallStack: true
+    });
 
     // Access to Audio API
-    instrumentObject(window.AudioContext.prototype, "AudioContext");
-    instrumentObject(window.OfflineAudioContext.prototype, "OfflineAudioContext");
-    instrumentObject(window.OscillatorNode.prototype, "OscillatorNode");
-    instrumentObject(window.AnalyserNode.prototype, "AnalyserNode");
-    instrumentObject(window.GainNode.prototype, "GainNode");
-    instrumentObject(window.ScriptProcessorNode.prototype, "ScriptProcessorNode");
+    instrumentObject(window.AudioContext.prototype, "AudioContext", {
+      logCallStack: true
+    });
+    instrumentObject(window.OfflineAudioContext.prototype, "OfflineAudioContext", {
+      logCallStack: true
+    });
+    instrumentObject(window.OscillatorNode.prototype, "OscillatorNode", {
+      logCallStack: true
+    });
+    instrumentObject(window.AnalyserNode.prototype, "AnalyserNode", {
+      logCallStack: true
+    });
+    instrumentObject(window.GainNode.prototype, "GainNode", {
+      logCallStack: true
+    });
+    instrumentObject(window.ScriptProcessorNode.prototype, "ScriptProcessorNode", {
+      logCallStack: true
+    });
 
     console.log("Successfully started all instrumentation.");
 
