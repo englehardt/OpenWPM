@@ -452,6 +452,10 @@ function getPageScript() {
     // which object method `func` is coming from in the logs
     function instrumentFunction(objectName, methodName, func, logSettings) {
       return function () {
+        // Print data urls to console
+        if (methodName == 'toDataURL') {
+          console.log("XXXXDATA URL:", func.apply(this, arguments));
+        }
         var callContext = getOriginatingScriptContext(!!logSettings.logCallStack);
         logCall(objectName + '.' + methodName, arguments, callContext, logSettings);
         return func.apply(this, arguments);
@@ -511,6 +515,8 @@ function getPageScript() {
                   "get", callContext, logSettings);
               return origProperty;
             }
+
+
           }
         })(),
         set: (function() {
