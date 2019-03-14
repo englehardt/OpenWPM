@@ -19,15 +19,17 @@ class serversocket:
     A server socket to receive and process string messages
     from client sockets to a central queue
     """
-    def __init__(self, name=None, verbose=False):
+    def __init__(self, name=None, verbose=False, logger=None):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.bind(('localhost', 0))
         self.sock.listen(10)  # queue a max of n connect requests
-        self.verbose = verbose
         self.name = name
         self.queue = Queue()
-        if self.verbose:
-            print("Server bound to: " + str(self.sock.getsockname()))
+        self.logger = logger
+        self.verbose = verbose
+        if self.logger:
+            logger.debug(
+                "Server bound to: " + str(self.sock.getsockname()))
 
     def start_accepting(self):
         """ Start the listener thread """
@@ -58,16 +60,18 @@ class serversocket:
             'd' : dill pickle
             'j' : json
         """
-        if self.verbose:
-            print("Thread: %s connected to: %s" %
-                  (threading.current_thread(), address))
+        if self.logger:
+            self.logger.debug(
+                "Thread: %s connected to: %s" %
+                (threading.current_thread(), address))
         try:
             while True:
                 msg = self.receive_msg(client, 5)
                 msglen, serialization = struct.unpack('>Lc', msg)
-                if self.verbose:
-                    print("Received message, length %d, serialization %r"
-                          % (msglen, serialization))
+                if self.verbose and self.logger:
+                    self.logger.debug(
+                        "Received message, length %d, serialization %r"
+                        % (msglen, serialization))
                 msg = self.receive_msg(client, msglen)
                 if serialization != b'n':
                     try:
@@ -78,17 +82,21 @@ class serversocket:
                         elif serialization == b'u':  # utf-8 serialization
                             msg = msg.decode('utf-8')
                         else:
-                            print("Unrecognized serialization type: %r"
-                                  % serialization)
+                            if self.logger:
+                                self.logger.debug(
+                                    "Unrecognized serialization type: %r"
+                                    % serialization)
                             continue
                     except (UnicodeDecodeError, ValueError) as e:
-                        print("Error de-serializing message: %s \n %s" % (
-                            msg, traceback.format_exc(e)))
+                        if self.logger:
+                            self.logger.error(
+                                "Error de-serializing message: %s \n %s" %
+                                (msg, traceback.format_exc(e)))
                         continue
                 self.queue.put(msg)
         except RuntimeError:
-            if self.verbose:
-                print("Client socket: " + str(address) + " closed")
+            if self.logger:
+                self.logger.debug("Client socket: " + str(address) + " closed")
 
     def receive_msg(self, client, msglen):
         msg = b''

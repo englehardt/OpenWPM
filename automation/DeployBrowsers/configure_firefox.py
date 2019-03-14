@@ -177,7 +177,6 @@ def optimize_prefs(fo):
     fo.set_preference(
         "browser.safebrowsing.provider.google4.lists", "")  # TP
     fo.set_preference("extensions.blocklist.enabled", False)  # extensions
-    fo.set_preference('security.OCSP.enabled', 0)
 
     # Disable Content Decryption Module and OpenH264 related downloads
     fo.set_preference("media.gmp-manager.url", "")

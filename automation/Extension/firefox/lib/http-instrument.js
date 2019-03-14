@@ -140,20 +140,14 @@ var httpRequestHandler = function(reqEvent, crawlID) {
 
   var encodingType = "";
   var headers = [];
-  var isOcsp= false;
   httpChannel.visitRequestHeaders({visitHeader: function(name, value) {
     var header_pair = [];
     header_pair.push(loggingDB.escapeString(name));
     header_pair.push(loggingDB.escapeString(value));
     headers.push(header_pair);
-    if (name == "Content-Type") {
-      encodingType = value;
-      if (encodingType.indexOf("application/ocsp-request") != -1)
-        isOcsp = true;
-    }
   }});
 
-  if (requestMethod == 'POST' && !isOcsp) {  // don't process OCSP requests
+  if (requestMethod == 'POST') {  // don't process OCSP requests
     reqEvent.subject.QueryInterface(components.interfaces.nsIUploadChannel);
     if (reqEvent.subject.uploadStream) {
       reqEvent.subject.uploadStream.QueryInterface(components.interfaces.nsISeekableStream);
@@ -177,6 +171,7 @@ var httpRequestHandler = function(reqEvent, crawlID) {
       // we store POST body in JSON format, except when it's a string without a (key-value) structure
       if ("post_body" in postObj)
         update["post_body"] = postObj["post_body"];
+        loggingDB.logInfo(JSON.stringify(update));
     }
   }
 
@@ -265,6 +260,9 @@ var httpRequestHandler = function(reqEvent, crawlID) {
     }
   }
 
+  if ("post_body" in update) {
+    loggingDB.logInfo(JSON.stringify(update));
+  }
   loggingDB.saveRecord("http_requests", update);
 };
 

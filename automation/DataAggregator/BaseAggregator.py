@@ -62,7 +62,7 @@ class BaseListener(object):
         """Run listener startup tasks
 
         Note: Child classes should call this method"""
-        self.sock = serversocket(name=type(self).__name__)
+        self.sock = serversocket(name=type(self).__name__, logger=self.logger)
         self.status_queue.put(self.sock.sock.getsockname())
         self.sock.start_accepting()
         self.record_queue = self.sock.queue
