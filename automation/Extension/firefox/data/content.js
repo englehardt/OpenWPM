@@ -646,6 +646,16 @@ function getPageScript() {
     instrumentObject(window.GainNode.prototype, "GainNode");
     instrumentObject(window.ScriptProcessorNode.prototype, "ScriptProcessorNode");
 
+    // Access to domRect stuff
+    instrumentObject(window.Element.prototype, "window.Element", {
+      propertiesToInstrument: ["getClientRects"]});
+    instrumentObject(window.Element.prototype, "window.Element", {
+      propertiesToInstrument: ["getBoundingClientRect"]});
+    instrumentObject(window.Range.prototype, "window.Range", {
+      propertiesToInstrument: ["getClientRects"]});
+    instrumentObject(window.Element.prototype, "window.Range", {
+      propertiesToInstrument: ["getBoundingClientRect"]});
+
     console.log("Successfully started all instrumentation.");
 
   } + "());";
