@@ -646,6 +646,14 @@ function getPageScript() {
     instrumentObject(window.GainNode.prototype, "GainNode");
     instrumentObject(window.ScriptProcessorNode.prototype, "ScriptProcessorNode");
 
+    // Access to EME API
+    instrumentObject(window.MediaKeyMessageEvent.prototype, "MediaKeyMessageEvent");
+    instrumentObject(window.MediaKeys.prototype, "MediaKeys");
+    instrumentObject(window.MediaKeySession.prototype, "MediaKeySession");
+    instrumentObject(window.MediaKeyStatusMap.prototype, "MediaKeyStatusMap");
+    instrumentObject(window.MediaKeySystemAccess.prototype, "MediaKeySystemAccess");
+    //instrumentObject(window.MediaKeySystemConfiguration.prototype, "MediaKeySystemConfiguration");
+
     console.log("Successfully started all instrumentation.");
 
   } + "());";
